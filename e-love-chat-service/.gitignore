@@ -1,0 +1,10 @@
+.mypy_cache
+env
+*.env
+venv
+.pyc
+db-app
+db-auth
+__pycache__
+.DS_Store
+e-love-frontend-api/docker/app.env
