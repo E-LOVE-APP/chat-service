@@ -7,27 +7,21 @@ from fastapi.responses import JSONResponse
 
 from configuration.config import settings
 from configuration.database import Base, engine
-from easter_eggs.greeting import ascii_hello_devs, ascii_painter
+from easter_eggs.greeting import ascii_hello_devs, default_art
 
 logging.basicConfig(level=logging.INFO)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
 
+logger = logging.getLogger(__name__)
+
+
 print(ascii_hello_devs)
-print(ascii_painter)
+print(default_art)
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
 )
-
-
-# @app.exception_handler(Exception)
-# async def generic_exception_handler(request: Request, exc: Exception):
-#     logger.error(f"Unhandled exception: {exc}")
-#     return JSONResponse(
-#         status_code=500,
-#         content={"detail": CommonExceptions.UNEXPECTED_ERROR.value},
-#     )
 
 
 # Test routes. We will remove those later
@@ -48,16 +42,22 @@ async def config_info():
     }
 
 
-# logger = logging.getLogger(__name__)
+# @app.exception_handler(Exception)
+# async def generic_exception_handler(request: Request, exc: Exception):
+#     logger.error(f"Unhandled exception: {exc}")
+#     return JSONResponse(
+#         status_code=500,
+#         content={"detail": CommonExceptions.UNEXPECTED_ERROR.value},
+#     )
 
 
-# @app.on_event("startup")
-# async def startup_event():
-#     # Добавляем вызов функции создания таблиц
-#     await create_tables()
+@app.on_event("startup")
+async def startup_event():
+    # Добавляем вызов функции создания таблиц
+    await create_tables()
 
 
-# async def create_tables():
-#     """Создает таблицы в базе данных при запуске приложения."""
-#     async with engine.begin() as conn:
-#         await conn.run_sync(Base.metadata.create_all)
+async def create_tables():
+    """Создает таблицы в базе данных при запуске приложения."""
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
