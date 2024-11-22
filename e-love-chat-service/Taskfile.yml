@@ -1,0 +1,56 @@
+version: "3"
+
+vars:
+  SERVICE_NAME: e-love-chat-service
+
+tasks:
+  build:
+    desc: "Build the {{.SERVICE_NAME}} Docker image"
+    cmds:
+      - docker build -t {{.SERVICE_NAME}} .
+
+  run:
+    desc: "Run the Docker {{.SERVICE_NAME}} container"
+    cmds:
+      - docker run --env-file .env -p 8081:8001 {{.SERVICE_NAME}}
+    interactive: true
+
+  compose-up:
+    desc: "Run the Docker container using docker-compose"
+    cmds:
+      - docker-compose up --build
+    interactive: true
+
+  compose-down:
+    desc: "Stop the Docker containers using docker-compose"
+    cmds:
+      - docker-compose down
+
+  docker-clean:
+    desc: "Stop Docker containers and clean up volumes, networks, and images"
+    cmds:
+      - docker-compose down --volumes --rmi all --remove-orphans
+      - docker system prune -f
+      - docker volume prune -f
+
+  upgrade-head:
+    desc: "Upgrade the database to the latest revision"
+    cmds:
+      - docker exec chat-service-api poetry run alembic upgrade head
+
+  # Create an Alembic revision
+  # Use Case Example (in the terminal):
+  #   | task create-revision-"test migration"
+
+  #TODO: catch no-comment case
+  create-revision-*:
+    desc: "Create an Alembic revision"
+    vars:
+      message: "{{index .MATCH 0}}"
+    cmds:
+      - docker exec chat-service-api poetry run alembic revision --autogenerate -m "{{.message}}"
+
+  downgrade-revision:
+    desc: "Downgrade the database to the previous revision"
+    cmds:
+      - docker exec chat-service-api poetry run alembic downgrade -1
