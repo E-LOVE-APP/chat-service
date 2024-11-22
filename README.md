@@ -1,4 +1,4 @@
-# 💖 E-Love (Backend)
+# 💖 E-Love Chat Application
 
 Welcome to **E-Love Chat Microservice**! 🎮❤️ This microservice is designed for E-Love application in order to prevent a big number of different dependencies. He's responsible for storing business-logic that is related with users chats, dialogs, etc.
 
