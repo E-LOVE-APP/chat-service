@@ -8,8 +8,10 @@ services:
       - db_data:/var/lib/mysql
     ports:
       - "3307:3306"
+    networks:
+      - e-love-network
     healthcheck:
-      test: "mysqladmin ping -h localhost"
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,9 +52,15 @@ services:
       - type: bind
         source: ./main.py
         target: /app/main.py
+    networks:
+      - e-love-network
     depends_on:
       db:
         condition: service_healthy
+
+networks:
+  e-love-network:
+    external: true
 
 volumes:
   db_data:
