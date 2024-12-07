@@ -23,6 +23,7 @@ asyncmy = "^0.2.9"
 jwt = "^1.3.1"
 pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
+websockets = "^14.1"
 
 
 [tool.poetry.group.dev.dependencies]
