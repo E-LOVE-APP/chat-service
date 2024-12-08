@@ -32,9 +32,6 @@ services:
         source: ./api
         target: /app/api
       - type: bind
-        source: ./auth
-        target: /app/auth
-      - type: bind
         source: ./configuration
         target: /app/configuration
       - type: bind
@@ -61,6 +58,7 @@ services:
 networks:
   e-love-network:
     external: true
+    driver: bridge
 
 volumes:
   db_data:
