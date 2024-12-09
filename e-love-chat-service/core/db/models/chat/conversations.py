@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import Column, ForeignKey, String, UniqueConstraint, Boolean, DateTime
+from sqlalchemy import Column, ForeignKey, String, UniqueConstraint, Boolean, DateTime, Index
 from sqlalchemy.orm import Mapped, relationship
 
 from core.db.models.base import BaseModel
@@ -29,6 +29,8 @@ class Conversations(BaseModel):
     # Unique constraint that ensures that the conversation will be unique.
     __table_args__ = (
         UniqueConstraint("user_first_id", "user_second_id", name="unique_conversation"),
+        Index("idx_conversations_is_deleted", "is_deleted"),
+        Index("idx_conversations_deleted_at", "deleted_at"),
     )
 
     # 1 conversation HAS many messages. Удаляет ВСЕ записи messages из conversations, если один из пользователей решит удалить в чат (прямо как в телеге!), это обеспечивается через каскадное удаление.

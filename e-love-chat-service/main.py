@@ -42,15 +42,6 @@ async def config_info():
     }
 
 
-# @app.exception_handler(Exception)
-# async def generic_exception_handler(request: Request, exc: Exception):
-#     logger.error(f"Unhandled exception: {exc}")
-#     return JSONResponse(
-#         status_code=500,
-#         content={"detail": CommonExceptions.UNEXPECTED_ERROR.value},
-#     )
-
-
 @app.on_event("startup")
 async def startup_event():
     # Добавляем вызов функции создания таблиц

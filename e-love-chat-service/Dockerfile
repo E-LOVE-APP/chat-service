@@ -41,4 +41,4 @@ EXPOSE 8081
 # for the nearest future
 # CMD ["bash", "-c", "poetry run alembic upgrade head && python -m scripts.db_scripts.populate_db && poetry run uvicorn main:app --host 0.0.0.0 --port 8080"]
 
-CMD ["bash", "-c", "poetry run uvicorn main:app --host 0.0.0.0 --port 8081"]
+CMD ["bash", "-c", "poetry run alembic upgrade head && poetry run uvicorn main:app --host 0.0.0.0 --port 8081"]

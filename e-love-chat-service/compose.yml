@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   db:
     image: mysql:8.0
@@ -44,9 +46,6 @@ services:
         source: ./alembic.ini
         target: /app/alembic.ini
       - type: bind
-        source: ./docker
-        target: /app/docker
-      - type: bind
         source: ./main.py
         target: /app/main.py
     networks:
@@ -54,6 +53,32 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  e-love-chat-service-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    container_name: chat-service-scheduler
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - type: bind
+        source: ./core
+        target: /app/core
+      - type: bind
+        source: ./configuration
+        target: /app/configuration
+    working_dir: /app
+    networks:
+      - e-love-network
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "core/db/scheduler/scheduler.py"]
 
 networks:
   e-love-network:
