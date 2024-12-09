@@ -109,3 +109,34 @@ class ConversationsService:
             await self.db_session.rollback()
             logger.error(f"Error in create_conversation: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")
+
+    async def delete_conversation(self, conversation_id: UUID) -> Conversations:
+        """
+        Мягко удаляет Conversation, устанавливая флаг is_deleted и метку времени удаления.
+
+        :param conversation_id: UUID идентификатор Conversation для удаления.
+        :return: Обновлённый экземпляр Conversation с установленными флагами удаления.
+        :raises HTTPException:
+            - 404 Not Found если Conversation не существует.
+            - 500 Internal Server Error для неожиданных ошибок сервера.
+        """
+        try:
+            conversation = await self.get_conversation_by_id(conversation_id)
+
+            conversation.is_deleted = True
+            conversation.deleted_at = datetime.utcnow()
+
+            self.db_session.add(conversation)
+            await self.db_session.commit()
+            await self.db_session.refresh(conversation)
+
+            logger.info(f"Conversation {conversation_id} marked as deleted.")
+            return conversation
+
+        except HTTPException as he:
+            raise he
+
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"Error in delete_conversation: {e}")
+            raise HTTPException(status_code=500, detail="Unexpected server error!")
