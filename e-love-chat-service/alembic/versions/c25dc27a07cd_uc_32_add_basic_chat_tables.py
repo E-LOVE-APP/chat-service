@@ -1,8 +1,8 @@
-"""uc_32_add_chat_tables
+"""uc_32_add_basic_chat_tables
 
-Revision ID: df4eb5ab594e
+Revision ID: c25dc27a07cd
 Revises: 
-Create Date: 2024-12-08 20:04:14.898069
+Create Date: 2024-12-09 21:09:05.452260
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'df4eb5ab594e'
+revision: str = 'c25dc27a07cd'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -23,6 +23,8 @@ def upgrade() -> None:
     op.create_table('conversations',
     sa.Column('user_first_id', sa.String(length=36), nullable=False),
     sa.Column('user_second_id', sa.String(length=36), nullable=False),
+    sa.Column('is_deleted', sa.Boolean(), nullable=False),
+    sa.Column('deleted_at', sa.DateTime(timezone=True), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),

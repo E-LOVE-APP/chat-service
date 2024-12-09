@@ -25,6 +25,7 @@ pyjwt = {extras = ["crypto"], version = "^2.9.0"}
 python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 websockets = "^14.1"
 uuid = "^1.30"
+apscheduler = "^3.11.0"
 
 
 [tool.poetry.group.dev.dependencies]
