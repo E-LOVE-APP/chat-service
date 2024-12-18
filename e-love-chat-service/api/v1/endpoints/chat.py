@@ -78,12 +78,17 @@ async def create_chat_conversation(data: dict, db: AsyncSession = Depends(get_db
 async def chat_endpoint(
     websocket: WebSocket, conversation_id: UUID, db: AsyncSession = Depends(get_db_session)
 ):
-    await websocket.accept()
+    # TODO: put it in "dependencies" ?
     conversations_service = ConversationsService(db)
     messages_service = MessagesService(db)
+    try:
+        await conversations_service.get_conversation_by_id(str(conversation_id))
+    except HTTPException as e:
+        # conversation не найден или другая ошибка
+        await websocket.close(code=1008)  # Policy Violation code или другой подходящий
+        return
 
-    # Проверим, что conversation существует
-    await conversations_service.get_conversation_by_id(conversation_id)
+    await websocket.accept()
 
     try:
         while True:
@@ -96,17 +101,20 @@ async def chat_endpoint(
 
             if action == "send_message":
                 payload = data["data"]
-                # sender_id = payload["sender_id"]
+                sender_id = payload["sender_id"]
                 recipient_id = payload["recipient_id"]
-                sender_id = "00cebe39-9159-500a-a4d3-efb9932ec33a"
+                # sender_id = "00cebe39-9159-500a-a4d3-efb9932ec33a"
                 # recipient_id = "014de6ad-1d30-5bfb-bad4-5bf4d7ff1f52"
                 content = payload["content"]
 
                 new_message = await messages_service.create_message(
-                    {"conversation_id": conversation_id, "sender_id": sender_id, "content": content}
+                    {
+                        "conversation_id": str(conversation_id),
+                        "sender_id": sender_id,
+                        "content": content,
+                    }
                 )
 
-                # Отправляем обратно уведомление о сохранении
                 await websocket.send_json(
                     {
                         "action": "message_saved",

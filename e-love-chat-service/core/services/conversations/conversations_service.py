@@ -43,7 +43,7 @@ class ConversationsService:
             if not obj:
                 raise HTTPException(status_code=404, detail="Conversation not found")
             return obj
-        except:
+        except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in get_object_by_id: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")

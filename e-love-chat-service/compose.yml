@@ -1,13 +1,13 @@
 version: "3.8"
 
 services:
-  db:
+  chat-service-db:
     image: mysql:8.0
     container_name: e-love-chat-service-db
     env_file:
       - ./docker/db-app/db.env
     volumes:
-      - db_data:/var/lib/mysql
+      - chat_service_db_data:/var/lib/mysql
     ports:
       - "3307:3306"
     networks:
@@ -51,7 +51,7 @@ services:
     networks:
       - e-love-network
     depends_on:
-      db:
+      chat-service-db:
         condition: service_healthy
 
   e-love-chat-service-scheduler:
@@ -76,7 +76,7 @@ services:
     networks:
       - e-love-network
     depends_on:
-      db:
+      chat-service-db:
         condition: service_healthy
     command: ["python", "core/db/scheduler/scheduler.py"]
 
@@ -86,5 +86,5 @@ networks:
     driver: bridge
 
 volumes:
-  db_data:
+  chat_service_db_data:
     driver: local

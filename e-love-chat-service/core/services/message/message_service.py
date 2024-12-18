@@ -16,10 +16,7 @@ logger = logging.getLogger(__name__)
 class MessagesService:
     """
     Service for managing Messages entities.
-
-    This service provides methods to interact with the Messages model, including retrieving,
-    creating, updating, and deleting message records in the database. It ensures data integrity
-    and handles potential exceptions that may arise during database operations.
+    Provides CRUD operations on Messages with proper error handling and validations.
     """
 
     def __init__(self, db_session: AsyncSession):
@@ -35,24 +32,19 @@ class MessagesService:
         Retrieves a Message object from the database by its unique identifier.
 
         :param message_id: The UUID of the Message to retrieve.
-        :return: An instance of the Messages model corresponding to the provided ID.
+        :return: An instance of the Message model corresponding to the provided ID.
         :raises HTTPException:
             - 404 Not Found if the Message does not exist.
             - 500 Internal Server Error for unexpected server errors.
         """
         try:
-
             result = await self.db_session.execute(select(Message).where(Message.id == message_id))
-
             message = result.scalar_one_or_none()
-
             if not message:
                 raise HTTPException(status_code=404, detail="Message not found")
             return message
-
-        except HTTPException as he:
-            raise he
-
+        except HTTPException:
+            raise
         except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in get_message_by_id: {e}")
@@ -62,45 +54,75 @@ class MessagesService:
         """
         Creates a new Message record in the database within a specified conversation.
 
-        This method ensures that:
-        1. The conversation_id and sender_id are provided and valid.
-        2. The specified conversation exists to associate the message with.
-        3. The content of the message is provided.
-        4. The message is created with an initial status of SENT.
-        5. Handles potential IntegrityError exceptions that may arise from database constraints.
-        6. Rolls back the session and logs errors for any unexpected exceptions.
+        Validations:
+        - conversation_id, sender_id, content must be present.
+        - conversation must exist.
+        - sender_id and recipient_id (if provided) must belong to this conversation.
+        - message is created with SENT status.
 
         :param data: A dictionary containing the data for creating a new Message.
-        :return: An instance of the newly created Messages model.
+        :return: An instance of the newly created Message model.
         :raises HTTPException:
             - 400 Bad Request if required fields are missing.
             - 404 Not Found if the specified conversation does not exist.
+            - 403 Forbidden if sender or recipient are not participants of the conversation.
             - 500 Internal Server Error for unexpected server errors.
         """
 
+        # Extract fields
         conversation_id = data.get("conversation_id")
         sender_id = data.get("sender_id")
+        recipient_id = data.get("recipient_id")
         content = data.get("content")
 
+        # Basic field checks
         if not conversation_id or not sender_id or not content:
             logger.error("Missing required fields in the data")
             raise HTTPException(status_code=400, detail="Missing required fields")
 
+        # Convert to UUID where appropriate
         try:
-            # Check if the specified conversation exists
+            conversation_uuid = str(conversation_id)
+            print(conversation_uuid)
+            sender_uuid = UUID(str(sender_id))
+            recipient_uuid = UUID(str(recipient_id)) if recipient_id else None
+        except ValueError:
+            logger.error("Invalid UUID format for sender/recipient")
+            raise HTTPException(status_code=400, detail="Invalid UUID format")
+
+        try:
             result = await self.db_session.execute(
-                select(Conversations).where(Conversations.id == conversation_id)
+                select(Conversations).where(Conversations.id == conversation_uuid)
             )
-
             conversation = result.scalar_one_or_none()
-
             if not conversation:
-                logger.error(f"Conversation {conversation_id} does not exist")
+                logger.error(f"Conversation {conversation_uuid} does not exist")
                 raise HTTPException(status_code=404, detail="Conversation not found")
 
+            user_first_uuid = UUID(str(conversation.user_first_id))
+            user_second_uuid = UUID(str(conversation.user_second_id))
+            allowed_users = {user_first_uuid, user_second_uuid}
+
+            if sender_uuid not in allowed_users:
+                logger.error(
+                    f"Sender {sender_uuid} does not belong to conversation {conversation_uuid}"
+                )
+                raise HTTPException(
+                    status_code=403, detail="Sender not authorized in this conversation"
+                )
+
+            if recipient_uuid and recipient_uuid not in allowed_users:
+                logger.error(
+                    f"Recipient {recipient_uuid} does not belong to conversation {conversation_uuid}"
+                )
+                raise HTTPException(
+                    status_code=403, detail="Recipient not authorized in this conversation"
+                )
+
+            # Create message
             new_message = Message(
-                conversation_id=conversation_id,
-                sender_id=sender_id,
+                conversation_id=conversation_uuid,
+                sender_id=sender_uuid,
                 content=content,
                 status=MessageStatus.SENT,
             )
@@ -111,14 +133,12 @@ class MessagesService:
             logger.info(f"Created new message with ID {new_message.id}")
             return new_message
 
-        except HTTPException as he:
-            raise he
-
+        except HTTPException:
+            raise
         except IntegrityError as ie:
             await self.db_session.rollback()
             logger.error(f"IntegrityError in create_message: {ie}")
             raise HTTPException(status_code=400, detail="Invalid data provided")
-
         except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in create_message: {e}")
@@ -128,16 +148,9 @@ class MessagesService:
         """
         Updates the status of an existing Message in the database.
 
-        This method performs the following steps:
-        1. Retrieves the Message with the specified ID.
-        2. Updates the Message's status based on the provided data.
-        3. Commits the transaction to persist the changes.
-        4. Refreshes the Message instance to reflect the updated status.
-        5. Logs the update action.
-
         :param message_id: The UUID of the Message to update.
         :param data: A dictionary containing the fields to update (e.g., status).
-        :return: The updated Messages instance.
+        :return: The updated Message instance.
         :raises HTTPException:
             - 400 Bad Request if the status provided is invalid.
             - 404 Not Found if the Message does not exist.
@@ -145,7 +158,6 @@ class MessagesService:
         """
         new_status = data.get("status")
 
-        # Validate that the new status is provided
         if not new_status:
             logger.error("Missing status field in the data")
             raise HTTPException(status_code=400, detail="Missing status field")
@@ -164,10 +176,8 @@ class MessagesService:
             await self.db_session.refresh(message)
             logger.info(f"Updated message {message_id} to status {new_status_enum}")
             return message
-
-        except HTTPException as he:
-            raise he
-
+        except HTTPException:
+            raise
         except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in update_message: {e}")
@@ -176,12 +186,6 @@ class MessagesService:
     async def delete_message(self, message_id: UUID) -> None:
         """
         Deletes a Message record from the database.
-
-        This method performs the following steps:
-        1. Retrieves the Message with the specified ID.
-        2. Deletes the Message from the session.
-        3. Commits the transaction to remove the record from the database.
-        4. Logs the deletion action.
 
         :param message_id: The UUID of the Message to delete.
         :return: None
@@ -194,10 +198,8 @@ class MessagesService:
             await self.db_session.delete(message)
             await self.db_session.commit()
             logger.info(f"Deleted message with ID {message_id}")
-
-        except HTTPException as he:
-            raise he
-
+        except HTTPException:
+            raise
         except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in delete_message: {e}")
