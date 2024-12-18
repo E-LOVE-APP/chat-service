@@ -6,6 +6,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db.models.chat.conversations import Conversations
@@ -58,7 +59,7 @@ class ConversationsService:
         user_first_id = data.get("user_first_id")
         user_second_id = data.get("user_second_id")
 
-        if not user_first_id or user_second_id:
+        if not user_first_id or not user_second_id:
             logger.error("Missing user IDs in the data")
             raise HTTPException(status_code=400, detail="Missing user IDs")
 
@@ -69,10 +70,10 @@ class ConversationsService:
             )
 
         # Поддержка консистентности. Подробности в документации (если ее еще нет, то будет)
-        if user1_id < user2_id:
-            user_first_id, user_second_id = user1_id, user2_id
+        if user_first_id < user_second_id:
+            user_first_id, user_second_id = user_first_id, user_second_id
         else:
-            user_first_id, user_second_id = user2_id, user1_id
+            user_first_id, user_second_id = user_second_id, user_first_id
 
         try:
             # Проверка консистентности. Подробности в документации (если ее еще нет, то будет)

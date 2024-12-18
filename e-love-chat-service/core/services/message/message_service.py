@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 
 from core.db.models.chat.conversations import Conversations
-from core.db.models.chat.message import Messages, MessageStatus
+from core.db.models.chat.message import Message, MessageStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class MessagesService:
         """
         self.db_session = db_session
 
-    async def get_message_by_id(self, message_id: UUID) -> Messages:
+    async def get_message_by_id(self, message_id: UUID) -> Message:
         """
         Retrieves a Message object from the database by its unique identifier.
 
@@ -42,9 +42,7 @@ class MessagesService:
         """
         try:
 
-            result = await self.db_session.execute(
-                select(Messages).where(Messages.id == message_id)
-            )
+            result = await self.db_session.execute(select(Message).where(Message.id == message_id))
 
             message = result.scalar_one_or_none()
 
@@ -60,7 +58,7 @@ class MessagesService:
             logger.error(f"Error in get_message_by_id: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")
 
-    async def create_message(self, data: Dict[str, Any]) -> Messages:
+    async def create_message(self, data: Dict[str, Any]) -> Message:
         """
         Creates a new Message record in the database within a specified conversation.
 
@@ -100,7 +98,7 @@ class MessagesService:
                 logger.error(f"Conversation {conversation_id} does not exist")
                 raise HTTPException(status_code=404, detail="Conversation not found")
 
-            new_message = Messages(
+            new_message = Message(
                 conversation_id=conversation_id,
                 sender_id=sender_id,
                 content=content,
@@ -126,7 +124,7 @@ class MessagesService:
             logger.error(f"Error in create_message: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")
 
-    async def update_message(self, message_id: UUID, data: Dict[str, Any]) -> Messages:
+    async def update_message(self, message_id: UUID, data: Dict[str, Any]) -> Message:
         """
         Updates the status of an existing Message in the database.
 

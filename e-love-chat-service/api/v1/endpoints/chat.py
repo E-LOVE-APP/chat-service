@@ -47,78 +47,11 @@ import logging
 from core.services.conversations.conversations_service import ConversationsService
 from core.services.message.message_service import MessagesService
 from core.db.models.chat.conversations import Conversations
-from core.db.models.chat.message import Messages
+from core.db.models.chat.message import Message
 from configuration.database import get_db_session
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-
-
-# class ConnectionManager:
-#     """
-#     Manages active WebSocket connections and facilitates broadcasting messages to participants
-#     within the same conversation.
-
-#     Attributes:
-#         active_connections (Dict[UUID, List[WebSocket]]): A dictionary mapping conversation IDs
-#             to lists of active WebSocket connections.
-#     """
-
-#     def __init__(self):
-#         """
-#         Initializes the ConnectionManager with an empty dictionary for active connections.
-#         """
-#         self.active_connections: Dict[UUID, List[WebSocket]] = {}
-#         self.lock = asyncio.Lock()  # Ensures thread-safe operations on active_connections
-
-#     async def connect(self, conversation_id: UUID, websocket: WebSocket):
-#         """
-#         Registers a new WebSocket connection under a specific conversation.
-
-#         :param conversation_id: The UUID of the conversation to join.
-#         :param websocket: The WebSocket connection to register.
-#         """
-#         await websocket.accept()
-#         async with self.lock:
-#             if conversation_id not in self.active_connections:
-#                 self.active_connections[conversation_id] = []
-#             self.active_connections[conversation_id].append(websocket)
-#             logger.info(f"WebSocket connection added to conversation {conversation_id}")
-
-#     async def disconnect(self, conversation_id: UUID, websocket: WebSocket):
-#         """
-#         Unregisters a WebSocket connection from a specific conversation.
-
-#         :param conversation_id: The UUID of the conversation to leave.
-#         :param websocket: The WebSocket connection to unregister.
-#         """
-#         async with self.lock:
-#             if conversation_id in self.active_connections:
-#                 self.active_connections[conversation_id].remove(websocket)
-#                 logger.info(f"WebSocket connection removed from conversation {conversation_id}")
-#                 if not self.active_connections[conversation_id]:
-#                     del self.active_connections[conversation_id]
-
-#     async def broadcast(self, conversation_id: UUID, message: Dict[str, Any]):
-#         """
-#         Sends a message to all active WebSocket connections within a specific conversation.
-
-#         :param conversation_id: The UUID of the conversation to broadcast to.
-#         :param message: The message data to send.
-#         """
-#         async with self.lock:
-#             connections = self.active_connections.get(conversation_id, [])
-#             logger.info(
-#                 f"Broadcasting message to {len(connections)} connections in conversation {conversation_id}"
-#             )
-#             for connection in connections:
-#                 try:
-#                     await connection.send_json(message)
-#                 except Exception as e:
-#                     logger.error(f"Failed to send message to a connection: {e}")
-
-
-# manager = ConnectionManager()
 
 router = APIRouter()
 
@@ -163,8 +96,10 @@ async def chat_endpoint(
 
             if action == "send_message":
                 payload = data["data"]
-                sender_id = payload["sender_id"]
+                # sender_id = payload["sender_id"]
                 recipient_id = payload["recipient_id"]
+                sender_id = "00cebe39-9159-500a-a4d3-efb9932ec33a"
+                # recipient_id = "014de6ad-1d30-5bfb-bad4-5bf4d7ff1f52"
                 content = payload["content"]
 
                 new_message = await messages_service.create_message(
@@ -184,140 +119,3 @@ async def chat_endpoint(
                 )
     except WebSocketDisconnect:
         pass
-
-
-# @router.websocket("/chat/{conversation_id}")
-# async def chat_endpoint(
-#     websocket: WebSocket, conversation_id: UUID, db: AsyncSession = Depends(get_db_session)
-# ):
-#     """
-#     WebSocket endpoint for handling real-time chat within a specific conversation.
-
-#     Clients connect to this endpoint to join a conversation, send messages, and receive messages
-#     from other participants in real time.
-
-#     :param websocket: The WebSocket connection.
-#     :param conversation_id: The UUID of the conversation to join.
-#     :param db: The asynchronous database session provided by dependency injection.
-#     """
-#     # Initialize services with the database session
-#     conversations_service = ConversationsService(db_session=db)
-#     messages_service = MessagesService(db_session=db)
-
-#     # Check if the conversation exists
-#     try:
-#         conversation = await conversations_service.get_conversation_by_id(conversation_id)
-#     except HTTPException as e:
-#         await websocket.close(code=e.status_code)
-#         return
-
-#     # Connect the WebSocket to the ConnectionManager
-#     await manager.connect(conversation_id, websocket)
-
-#     try:
-#         while True:
-#             # Wait to receive data from the client
-#             data = await websocket.receive_json()
-#             action = data.get("action")
-#             payload = data.get("payload")
-
-#             if action == "send_message":
-#                 # Handle sending a new message
-#                 sender_id = payload.get("sender_id")
-#                 content = payload.get("content")
-
-#                 if not sender_id or not content:
-#                     await websocket.send_json({"error": "Missing sender_id or content"})
-#                     continue
-
-#                 # Create the new message
-#                 try:
-#                     new_message = await messages_service.create_message(
-#                         {
-#                             "conversation_id": conversation_id,
-#                             "sender_id": sender_id,
-#                             "content": content,
-#                         }
-#                     )
-#                 except HTTPException as e:
-#                     await websocket.send_json({"error": e.detail})
-#                     continue
-
-#                 # Prepare the message data to broadcast
-#                 message_data = {
-#                     "id": str(new_message.id),
-#                     "conversation_id": str(new_message.conversation_id),
-#                     "sender_id": new_message.sender_id,
-#                     "content": new_message.content,
-#                     "status": new_message.status.value,
-#                     "timestamp": new_message.created_at.isoformat(),
-#                 }
-
-#                 # Broadcast the message to all participants in the conversation
-#                 await manager.broadcast(
-#                     conversation_id, {"action": "new_message", "payload": message_data}
-#                 )
-
-#             elif action == "update_status":
-#                 # Handle updating the status of a message
-#                 message_id = payload.get("message_id")
-#                 new_status = payload.get("status")
-
-#                 if not message_id or not new_status:
-#                     await websocket.send_json({"error": "Missing message_id or status"})
-#                     continue
-
-#                 try:
-#                     updated_message = await messages_service.update_message(
-#                         UUID(message_id), {"status": new_status}
-#                     )
-#                 except HTTPException as e:
-#                     await websocket.send_json({"error": e.detail})
-#                     continue
-
-#                 # Prepare the updated message data to broadcast
-#                 updated_data = {
-#                     "id": str(updated_message.id),
-#                     "status": updated_message.status.value,
-#                 }
-
-#                 # Broadcast the status update to all participants in the conversation
-#                 await manager.broadcast(
-#                     conversation_id, {"action": "update_status", "payload": updated_data}
-#                 )
-
-#             elif action == "delete_message":
-#                 # Handle deleting a message
-#                 message_id = payload.get("message_id")
-
-#                 if not message_id:
-#                     await websocket.send_json({"error": "Missing message_id"})
-#                     continue
-
-#                 try:
-#                     await messages_service.delete_message(UUID(message_id))
-#                 except HTTPException as e:
-#                     await websocket.send_json({"error": e.detail})
-#                     continue
-
-#                 # Prepare the deletion data to broadcast
-#                 deletion_data = {"id": str(message_id)}
-
-#                 # Broadcast the message deletion to all participants in the conversation
-#                 await manager.broadcast(
-#                     conversation_id, {"action": "delete_message", "payload": deletion_data}
-#                 )
-
-#             else:
-#                 # Handle unknown actions
-#                 await websocket.send_json({"error": f"Unknown action: {action}"})
-
-#     except WebSocketDisconnect:
-#         # Handle disconnection
-#         await manager.disconnect(conversation_id, websocket)
-#         logger.info(f"WebSocket disconnected from conversation {conversation_id}")
-#     except Exception as e:
-#         # Handle unexpected errors
-#         await manager.disconnect(conversation_id, websocket)
-#         logger.error(f"Error in WebSocket connection: {e}")
-#         await websocket.close()

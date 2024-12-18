@@ -17,7 +17,7 @@ class MessageStatus(PyEnum):
     READ = "READ"
 
 
-class Messages(BaseModel):
+class Message(BaseModel):
     """
     Модель сущности разговора / диалога
 
