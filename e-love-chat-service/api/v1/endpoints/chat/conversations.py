@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from configuration.database import get_db_session
 from core.db.models.chat.conversations import Conversations
 from core.db.models.chat.message import Message
+from core.db.schemas.chat.conversation import CreateConversationOutput, CreateConversationRequest
 from core.services.conversations.conversations_service import ConversationsService
 from core.services.message.message_service import MessagesService
 
@@ -34,23 +35,26 @@ router = APIRouter()
 # TODO: add docstrings to the funcs
 
 
-# TODO: create pydantic-schema for data-input
-# TODO: move db-session depedency to the router-dependency?
-@router.post("/conversations")
-async def create_chat_conversation(data: dict, db: AsyncSession = Depends(get_db_session)):
-    user_first_id = data.get("user_first_id")
-    user_second_id = data.get("user_second_id")
+@router.post("/conversations", response_model=CreateConversationOutput)
+async def create_chat_conversation(
+    request_data: CreateConversationRequest, db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Create a new conversation between two users.
 
+    This endpoint takes a JSON body containing user_first_id and user_second_id (both as strings),
+    creates a conversation in the database, and returns the created conversation details.
+    """
     service = ConversationsService(db)
     conversation = await service.create_conversation(
-        {"user_first_id": user_first_id, "user_second_id": user_second_id}
+        {"user_first_id": request_data.user_first_id, "user_second_id": request_data.user_second_id}
     )
-    # should i cast it explicitly to str-type if I can achieve the same result using pydantic?
-    return {
-        "id": str(conversation.id),
-        "user_first_id": str(conversation.user_first_id),
-        "user_second_id": str(conversation.user_second_id),
-    }
+
+    return CreateConversationOutput(
+        id=str(conversation.id),
+        user_first_id=str(conversation.user_first_id),
+        user_second_id=str(conversation.user_second_id),
+    )
 
 
 # TODO: maybe I can also get rid of str-casting here using pydantic?
