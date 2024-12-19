@@ -4,8 +4,8 @@ from uuid import UUID
 
 from fastapi import HTTPException
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.db.models.chat.conversations import Conversations
 from core.db.models.chat.message import Message, MessageStatus

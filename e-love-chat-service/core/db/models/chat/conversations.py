@@ -1,7 +1,7 @@
 from typing import List
 from uuid import UUID
 
-from sqlalchemy import Column, ForeignKey, String, UniqueConstraint, Boolean, DateTime, Index
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, relationship
 
 from core.db.models.base import BaseModel

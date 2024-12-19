@@ -6,7 +6,6 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from api.v1.router.router import api_router as main_router
-
 from configuration.config import settings
 from configuration.database import Base, engine
 from easter_eggs.greeting import ascii_hello_devs, default_art
