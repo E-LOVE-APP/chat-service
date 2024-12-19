@@ -76,16 +76,15 @@ class MessagesService:
         content = data.get("content")
 
         # Basic field checks
-        if not conversation_id or not sender_id or not content:
+        if not conversation_id or not sender_id or not recipient_id or not content:
             logger.error("Missing required fields in the data")
             raise HTTPException(status_code=400, detail="Missing required fields")
 
         # Convert to UUID where appropriate
         try:
-            conversation_uuid = str(conversation_id)
-            print(conversation_uuid)
-            sender_uuid = UUID(str(sender_id))
-            recipient_uuid = UUID(str(recipient_id)) if recipient_id else None
+            conversation_uuid = conversation_id
+            sender_uuid = sender_id
+            recipient_uuid = recipient_id if recipient_id else None
         except ValueError:
             logger.error("Invalid UUID format for sender/recipient")
             raise HTTPException(status_code=400, detail="Invalid UUID format")
@@ -99,8 +98,8 @@ class MessagesService:
                 logger.error(f"Conversation {conversation_uuid} does not exist")
                 raise HTTPException(status_code=404, detail="Conversation not found")
 
-            user_first_uuid = UUID(str(conversation.user_first_id))
-            user_second_uuid = UUID(str(conversation.user_second_id))
+            user_first_uuid = str(conversation.user_first_id)
+            user_second_uuid = str(conversation.user_second_id)
             allowed_users = {user_first_uuid, user_second_uuid}
 
             if sender_uuid not in allowed_users:
@@ -111,7 +110,7 @@ class MessagesService:
                     status_code=403, detail="Sender not authorized in this conversation"
                 )
 
-            if recipient_uuid and recipient_uuid not in allowed_users:
+            if recipient_uuid not in allowed_users:
                 logger.error(
                     f"Recipient {recipient_uuid} does not belong to conversation {conversation_uuid}"
                 )
@@ -133,8 +132,6 @@ class MessagesService:
             logger.info(f"Created new message with ID {new_message.id}")
             return new_message
 
-        except HTTPException:
-            raise
         except IntegrityError as ie:
             await self.db_session.rollback()
             logger.error(f"IntegrityError in create_message: {ie}")
