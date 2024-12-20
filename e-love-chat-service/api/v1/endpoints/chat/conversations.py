@@ -24,15 +24,15 @@ from configuration.database import get_db_session
 from core.db.models.chat.conversations import Conversations
 from core.db.models.chat.message import Message
 from core.db.schemas.chat.conversation import CreateConversationOutput, CreateConversationRequest
+from core.db.schemas.chat.websocket_actions import SendMessageAction, SendMessageData
 from core.services.conversations.conversations_service import ConversationsService
 from core.services.message.message_service import MessagesService
+from handlers.chat.send_message_handler import handle_send_message
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 router = APIRouter()
-
-# TODO: add docstrings to the funcs
 
 
 @router.post("/conversations", response_model=CreateConversationOutput)
@@ -57,13 +57,39 @@ async def create_chat_conversation(
     )
 
 
-# TODO: maybe I can also get rid of str-casting here using pydantic?
 @router.websocket("/{conversation_id}")
-async def chat_endpoint(
+async def conversation_messages_websocket(
     websocket: WebSocket, conversation_id: UUID, db: AsyncSession = Depends(get_db_session)
 ):
+    """
+    WebSocket endpoint for real-time messaging within a conversation.
+
+    Connect to ws://<host>/chat/{conversation_id} and send JSON messages:
+    {
+      "action": "send_message",
+      "data": {
+        "sender_id": "<uuid>",
+        "recipient_id": "<uuid>",
+        "content": "Hello!"
+      }
+    }
+
+    If successful, responds with:
+    {
+      "action": "message_saved",
+      "data": {
+        "sender_id": "<uuid>",
+        "recipient_id": "<uuid>",
+        "content": "..."
+      }
+    }
+
+    On error:
+    {
+      "error": "Error detail"
+    }
+    """
     conversations_service = ConversationsService(db)
-    messages_service = MessagesService(db)
 
     try:
         await conversations_service.get_conversation_by_id(str(conversation_id))
@@ -73,40 +99,35 @@ async def chat_endpoint(
 
     await websocket.accept()
 
+    # If we anticipate more actions, we can define a dispatcher:
+    action_handlers = {
+        "send_message": handle_send_message,
+        # TODO: In the future, add "update_message": handle_update_message, etc.
+    }
+
     while True:
         try:
-            data = await websocket.receive_json()
-            action = data.get("action")
+            raw_data = await websocket.receive_json()
+            # Validate incoming message using pydantic schema
+            message_action = SendMessageAction(**raw_data)
 
-            if action == "send_message":
-                payload = data["data"]
-                sender_id = payload["sender_id"]
-                recipient_id = payload["recipient_id"]
-                content = payload["content"]
-
-                new_message = await messages_service.create_message(
-                    {
-                        "conversation_id": str(conversation_id),
-                        "sender_id": str(sender_id),
-                        "recipient_id": str(recipient_id),
-                        "content": content,
-                    }
+            handler = action_handlers.get(message_action.action)
+            if handler:
+                response = await handler(
+                    db,
+                    conversation_id=str(conversation_id),
+                    sender_id=message_action.data.sender_id,
+                    recipient_id=message_action.data.recipient_id,
+                    content=message_action.data.content,
                 )
-
-                await websocket.send_json(
-                    {
-                        "action": "message_saved",
-                        "data": {
-                            "sender_id": sender_id,
-                            "recipient_id": recipient_id,
-                            "content": content,
-                        },
-                    }
-                )
+                await websocket.send_json(response)
+            else:
+                await websocket.send_json(error_response("Unknown action"))
+                continue
 
         except HTTPException as he:
             await db.rollback()
-            await websocket.send_json({"error": he.detail})
+            await websocket.send_json(error_response(he.detail))
             continue
 
         except WebSocketDisconnect:
@@ -114,5 +135,6 @@ async def chat_endpoint(
 
         except Exception as e:
             await db.rollback()
-            await websocket.send_json({"error": "Unexpected server error."})
+            logger.error(f"Unexpected error: {e}")
+            await websocket.send_json(error_response("Unexpected server error."))
             break
