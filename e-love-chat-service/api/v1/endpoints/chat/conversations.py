@@ -51,9 +51,9 @@ async def create_chat_conversation(
     )
 
     return CreateConversationOutput(
-        id=str(conversation.id),
-        user_first_id=str(conversation.user_first_id),
-        user_second_id=str(conversation.user_second_id),
+        id=conversation.id,
+        user_first_id=conversation.user_first_id,
+        user_second_id=conversation.user_second_id,
     )
 
 
