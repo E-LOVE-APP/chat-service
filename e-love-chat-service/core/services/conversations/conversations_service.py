@@ -48,6 +48,7 @@ class ConversationsService:
             logger.error(f"Error in get_object_by_id: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")
 
+    # TODO: include deleted messages?
     async def create_conversation(self, data: Dict[str, Any]) -> Conversations:
         """
         Создает новый объект Conversations модели в базе данных.

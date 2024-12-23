@@ -1,9 +1,9 @@
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import asc, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,6 +48,30 @@ class MessagesService:
         except Exception as e:
             await self.db_session.rollback()
             logger.error(f"Error in get_message_by_id: {e}")
+            raise HTTPException(status_code=500, detail="Unexpected server error!")
+
+    async def get_last_conversation_history(self, conversation_id: UUID) -> List[Message]:
+        """
+        Retrieves last users messages history based on the conversation.
+        :param conversation_id: The UUID of the Conversation.
+        :return: A last users history based on the conversation.
+        :raises HTTPException:
+            - 404 Not Found if the Message(s) does not exist.
+            - 500 Internal Server Error for unexpected server errors.
+        """
+
+        try:
+            base_query = (
+                select(Message).where(Message.conversation_id == str(conversation_id)).order_by(asc)
+            )
+            result = await self.db_session.execute(base_query)
+            history = result.scalars().all()
+            return history
+        except HTTPException:
+            raise
+        except Exception as e:
+            await self.db_session.rollback()
+            logger.error(f"Error in get_last_conversation_history: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error!")
 
     async def create_message(self, data: Dict[str, Any]) -> Message:

@@ -1,10 +1,14 @@
 # app/api/v1/router/router.py
 from fastapi import APIRouter
 
-from api.v1.endpoints.chat.conversations import router as chat_router
+from api.v1.endpoints.chat.conversations import router as conversation_router
+from api.v1.endpoints.chat.conversations_ws import router as chat_router
+from api.v1.endpoints.chat.messages import router as messages_router
 
 api_router = APIRouter()
 api_router.include_router(chat_router, prefix="/chat", tags=["Chat"])
+api_router.include_router(conversation_router)
+api_router.include_router(messages_router)
 
 
 # ⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠿⠿⠿⠟⢿⣻⣟⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⢻⡝⠬⢋⣤⣶⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⢋⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣄⡀⠀⠀⠀⠀⢀⠢⠑⡌⠲⣉
