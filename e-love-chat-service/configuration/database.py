@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import colorlog
+from fastapi import HTTPException
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
@@ -61,7 +62,10 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
+        except HTTPException as he:
+            await session.rollback()
+            raise he
         except Exception as e:
             await session.rollback()
             logger.error(f"Database session error: {e}")
-            raise
+            raise e

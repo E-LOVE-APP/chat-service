@@ -5,6 +5,7 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from api.v1.router.router import api_router as main_router
 from configuration.config import settings
 from configuration.database import Base, engine
 from easter_eggs.greeting import ascii_hello_devs, default_art
@@ -23,6 +24,8 @@ app = FastAPI(
     version=settings.app_version,
 )
 
+app.include_router(main_router)
+
 
 # Test routes. We will remove those later
 @app.get("/hello")
@@ -40,15 +43,6 @@ async def config_info():
         "app_running_env": settings.app_running_env,
         "greeting_message": settings.greeting_message,
     }
-
-
-# @app.exception_handler(Exception)
-# async def generic_exception_handler(request: Request, exc: Exception):
-#     logger.error(f"Unhandled exception: {exc}")
-#     return JSONResponse(
-#         status_code=500,
-#         content={"detail": CommonExceptions.UNEXPECTED_ERROR.value},
-#     )
 
 
 @app.on_event("startup")

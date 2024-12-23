@@ -1,15 +1,19 @@
+version: "3.8"
+
 services:
-  db:
+  chat-service-db:
     image: mysql:8.0
     container_name: e-love-chat-service-db
     env_file:
       - ./docker/db-app/db.env
     volumes:
-      - db_data:/var/lib/mysql
+      - chat_service_db_data:/var/lib/mysql
     ports:
       - "3307:3306"
+    networks:
+      - e-love-network
     healthcheck:
-      test: "mysqladmin ping -h localhost"
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -30,9 +34,6 @@ services:
         source: ./api
         target: /app/api
       - type: bind
-        source: ./auth
-        target: /app/auth
-      - type: bind
         source: ./configuration
         target: /app/configuration
       - type: bind
@@ -45,15 +46,45 @@ services:
         source: ./alembic.ini
         target: /app/alembic.ini
       - type: bind
-        source: ./docker
-        target: /app/docker
-      - type: bind
         source: ./main.py
         target: /app/main.py
+    networks:
+      - e-love-network
     depends_on:
-      db:
+      chat-service-db:
         condition: service_healthy
 
+  e-love-chat-service-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        INSTALL_DEV: "true"
+    container_name: chat-service-scheduler
+    env_file:
+      - .env
+    environment:
+      - PYTHONPATH=/app
+    volumes:
+      - type: bind
+        source: ./core
+        target: /app/core
+      - type: bind
+        source: ./configuration
+        target: /app/configuration
+    working_dir: /app
+    networks:
+      - e-love-network
+    depends_on:
+      chat-service-db:
+        condition: service_healthy
+    command: ["python", "core/db/scheduler/scheduler.py"]
+
+networks:
+  e-love-network:
+    external: true
+    driver: bridge
+
 volumes:
-  db_data:
+  chat_service_db_data:
     driver: local
