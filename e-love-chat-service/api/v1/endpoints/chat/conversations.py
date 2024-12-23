@@ -28,6 +28,7 @@ from core.db.schemas.chat.websocket_actions import SendMessageAction, SendMessag
 from core.services.conversations.conversations_service import ConversationsService
 from core.services.message.message_service import MessagesService
 from handlers.chat.send_message_handler import handle_send_message
+from utils.chat.chat_responses import error_response
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
